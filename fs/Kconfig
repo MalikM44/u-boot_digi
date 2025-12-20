@@ -28,4 +28,6 @@ source "fs/squashfs/Kconfig"
 
 source "fs/erofs/Kconfig"
 
+source "fs/exfat/Kconfig"
+
 endmenu
