@@ -1,0 +1,240 @@
+config CC9
+	bool
+	select HAS_TRUSTFENCE
+
+config CC8M
+	bool
+	select HAS_TRUSTFENCE
+
+config CC8X
+	bool
+	select HAS_TRUSTFENCE
+
+config CC6UL
+	bool
+	select HAS_TRUSTFENCE
+
+config CC6
+	bool
+	select HAS_TRUSTFENCE
+
+config MCA
+	bool "Support for the Micro Controller Assist (MCA)"
+
+if MCA
+config MCA_I2C_BUS
+	int "I2C bus index where the MCA is connected to"
+
+config MCA_I2C_ADDR
+	hex "I2C address of the Micro Controller Assist (MCA)"
+
+config MCA_OFFSET_LEN
+	int "Offset length value of the I2C bus when talking to the MCA"
+	default 2
+
+config MCA_TAMPER
+	bool "Support for the tamper pins of the MCA"
+endif
+
+config CMD_DBOOT
+	bool "Support for Digi 'dboot' command"
+	help
+	  Digi custom direct boot (dboot) command comprises in a single
+	  command:
+	   - Download of firmware files (kernel, device tree) from the
+	     specified media to RAM.
+	   - Composition of boot arguments.
+	   - Boot of the Operating System.
+
+config CMD_UPDATE
+	bool "Support for Digi 'update' command"
+	help
+	  Digi custom firmware update (update) command comprises in a single
+	  command:
+	   - Download of firmware image files from the specified media to RAM.
+	   - Programming of the firmware file on the specified partition.
+	   - Verification of the image programmed on the storage media.
+
+	  The command also allows for on-the-fly update (transfer and write
+	  chunks of the firmware image) when available RAM is small or the
+	  image file is very large).
+
+if CMD_DBOOT || CMD_UPDATE
+config DIGI_UPDATE_ADDR
+	hex "RAM address where to place the firmware image during update"
+	default 0x90000000 if CC9 && !IMX95
+	default 0xA0000000 if CC9 && IMX95
+	default 0x50000000 if CC8M
+	default 0x95000000 if CC8X
+	default 0x80800000 if CC6UL
+	default 0x12000000 if CC6
+
+config DIGI_LZIPADDR
+	hex "RAM address where to place compressed image (to be decompressed)"
+	default 0x84000000 if CC9 && !IMX95
+	default 0x94000000 if CC9 && IMX95
+	default 0x44000000 if CC8M
+	default 0x8C000000 if CC8X
+	default 0x82000000 if CC6UL
+	default 0x15000000 if CC6
+endif
+
+if CMD_UPDATE
+config CMD_UPDATE_NAND
+	bool
+	default y if CC6UL
+
+config CMD_UPDATE_MMC
+	bool
+	default y if CC9
+	default y if CC8M
+	default y if CC8X
+	default y if CC6
+
+config SYS_STORAGE_MEDIA
+	string
+	default "nand" if CMD_UPDATE_NAND
+	default "mmc" if CMD_UPDATE_MMC
+
+config CMD_BOOTSTREAM
+	bool
+	depends on CMD_UPDATE_NAND
+	default y if CC6UL
+
+config OTF_CHUNK
+	hex "Chunk size (in bytes) for on-the-fly (OTF) updates"
+	default 0x2000000
+
+config UBOOT_RESERVED
+	hex "RAM memory reserved for U-Boot, stack, malloc pool..."
+	default 0xA00000
+endif
+
+config DIGI_UBI
+	bool "Support for Digi specific UBI functions"
+
+config HAS_HWID
+	bool "Platform supports a Hardware ID (HWID) on the OTP bits"
+
+if HAS_HWID
+config HWID_BANK
+	int "OTP bank where the HWID is"
+	default 39 if CC9
+	default 9 if CC8M
+	default 0 if CC8X
+	default 4 if CC6UL
+	default 4 if CC6
+
+config HWID_START_WORD
+	int "Offset of the first OTP word where the HWID is"
+	default 3 if CC9
+	default 0 if CC8M
+	default 708 if CC8X
+	default 2 if CC6UL
+	default 2 if CC6
+
+config HWID_WORDS_NUMBER
+	int "Number of OTP words that form the HWID"
+	default 3 if CC9
+	default 3 if CC8M
+	default 4 if CC8X
+	default 2 if CC6UL
+	default 2 if CC6
+
+config HAS_OTP_LOCK_FUSE
+	bool
+	default y if CC6UL
+	default y if CC8M
+	default y if CC9
+	default y if CC6
+
+if HAS_OTP_LOCK_FUSE
+config HWID_LOCK_FUSE
+	hex "HWID lock fuse mask"
+	default 0x100 if CC6UL
+	default 0x4000 if CC8M
+	default 0x40 if CC9
+	default 0x100 if CC6
+endif
+
+endif
+
+config DIGI_FAMILY_ID
+	int "Digi Family ID for Serial Number composition"
+	default 1 if CC8X
+	default 2 if CC8M && IMX8MN
+	default 3 if CC8M && IMX8MM
+	default 4 if CCMP1
+	default 5 if CC9
+	default 0
+
+config HAS_TRUSTFENCE
+	bool
+
+config TRUSTFENCE_UPDATE
+	bool
+	depends on HAS_TRUSTFENCE
+	default y if CC6UL
+	default y if CC8M
+	default y if CC8X
+	default y if CC9
+	default y if CC6
+
+config TRUSTFENCE_JTAG
+	bool
+	depends on HAS_TRUSTFENCE
+	default y if CC6UL
+
+config ENV_ENCRYPT
+	bool "Encrypt u-boot environment using the hardware unique key (HUK)"
+	select MD5
+	help
+	  Implementation uses CAAM or Optee depending on the platform.
+
+	  This setting only has an effect on closed devices (those that can
+	  only boot signed U-Boot images). It has no effect on open devices.
+
+config CAAM_ENV_ENCRYPT
+	bool
+	depends on ENV_ENCRYPT
+	depends on HAS_CAAM && !CC9
+	default ENV_ENCRYPT
+	help
+	  Encrypt U-Boot environment using CAAM
+
+config OPTEE_ENV_ENCRYPT
+	bool
+	depends on ENV_ENCRYPT
+	depends on CC9
+	default ENV_ENCRYPT
+	help
+	  Encrypt U-Boot environment using Optee
+
+config REDUNDANT_BOOTLOADER
+	bool
+	depends on CMD_UPDATE_MMC
+	default y if CC9
+
+config FIT_CFGS_PREFIX
+	string
+	default "conf-"
+	help
+	  Prefix for the names of the configurations in the FIT image.
+
+config ANDROID_LOAD_CONNECTCORE_FDT
+	bool "Load the device tree blob and overlays from environment variables"
+	depends on ANDROID_SUPPORT
+	select OF_LIBFDT_OVERLAY
+	help
+	  On Android, this option enables loading the main device tree blob and
+	  its overlays from the DTBO partition, based on the content of environment
+	  variables.
+
+	  U-Boot automatically populates the environment variable
+	  (som_overlays) based on the platform.
+
+# Provide a sane default kernel load address which is 2MB aligned (to save a
+# memory copy) and that does not overlap with the hardcoded DEK blob address
+# on iMX8M devices (0x40400000)
+config SYS_LOAD_ADDR
+	default 0x40600000 if CC8M

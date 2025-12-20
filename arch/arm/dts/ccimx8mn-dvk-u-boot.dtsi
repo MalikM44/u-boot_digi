@@ -1,0 +1,133 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright 2020-2025 Digi International Inc.
+ */
+
+#include "imx8mn-u-boot.dtsi"
+#include "imx8mn-sec-def.h"
+
+/{
+	bootcount {
+		compatible = "u-boot,bootcount-rtc";
+		rtc = <&mca_rtc>;
+		offset = <0x00b0>;
+	};
+
+	mcu_rdc {
+		compatible = "imx8m,mcu_rdc";
+			    /* rdc config when MCU starts
+			     * master
+			     *   SDMA3p --> domain 1
+			     *   SDMA3b --> domian 1
+			     *   SDMA3_SPBA2  --> domian 1
+			     * peripheral:
+			     *   SAI3   --> Only Domian 1 can access
+			     *   UART4  --> Only Domian 1 can access
+			     *   GPT1   --> Only Domian 1 can access
+			     * memory:
+			     *   TCM    --> Only Domian 1 can access (0x7E0000~0x81FFFF)
+			     *   DDR    --> Only Domian 1 can access (0x80000000~0x81000000)
+			     * end.
+			     */
+		start-config = <
+			    RDC_MDA  RDC_MDA_SDMA3p DID1 0x0 0x0
+			    RDC_MDA  RDC_MDA_SDMA3b DID1 0x0 0x0
+			    RDC_MDA  RDC_MDA_SDMA3_SPBA2 DID1 0x0 0x0
+			    RDC_PDAP RDC_PDAP_SAI3  PDAP_D1_ACCESS 0x0 0x0
+			    RDC_PDAP RDC_PDAP_UART4 PDAP_D1_ACCESS 0x0 0x0
+			    RDC_PDAP RDC_PDAP_GPT1  PDAP_D1_ACCESS 0x0 0x0
+			    RDC_MEM_REGION 26 TCM_START TCM_END MEM_D1_ACCESS
+			    RDC_MEM_REGION 0 M4_EVK_DDR4_START M4_EVK_DDR4_END MEM_D1_ACCESS
+			    0x0      0x0            0x0  0x0 0x0
+			  >;
+			    /* rdc config when MCU stops
+			     * memory:
+			     *   TCM    --> domain 0/1 can access (0x7E0000~0x81FFFF)
+			     *   DDR    --> domain 0/1 can access (0x80000000~0x81000000)
+			     * end.
+			     */
+		stop-config = <
+			    RDC_MEM_REGION 26 TCM_START TCM_END MEM_D0D1_ACCESS
+			    RDC_MEM_REGION 0 M4_EVK_DDR4_START M4_EVK_DDR4_END MEM_D0D1_ACCESS
+			    0x0      0x0            0x0  0x0 0x0
+			  >;
+	};
+};
+
+&pinctrl_uart1 {
+        bootph-pre-ram;
+};
+
+&pinctrl_usdhc2_gpio {
+	bootph-pre-ram;
+};
+
+&pinctrl_usdhc2 {
+	bootph-pre-ram;
+};
+
+&pinctrl_usdhc3 {
+	bootph-pre-ram;
+};
+
+&gpio1 {
+	bootph-pre-ram;
+};
+
+&gpio2 {
+	bootph-pre-ram;
+};
+
+&gpio3 {
+	bootph-pre-ram;
+};
+
+&gpio4 {
+	bootph-pre-ram;
+};
+
+&gpio5 {
+	bootph-pre-ram;
+};
+
+&uart1 {
+	bootph-pre-ram;
+};
+
+&usdhc2 {
+	bootph-pre-ram;
+};
+
+&tmu {
+	bootph-all;
+};
+
+&i2c1 {
+	bootph-pre-ram;
+};
+
+&{/soc@0/bus@30800000/i2c@30a20000/pca9450@25} {
+	bootph-pre-ram;
+};
+
+&{/soc@0/bus@30800000/i2c@30a20000/pca9450@25/regulators} {
+	bootph-pre-ram;
+};
+
+&pinctrl_i2c1 {
+	bootph-pre-ram;
+};
+
+&pinctrl_i2c1_gpio {
+	bootph-pre-ram;
+};
+
+&pinctrl_pmic {
+	bootph-pre-ram;
+};
+
+&mipi_dsi {
+	/delete-property/ assigned-clocks;
+	/delete-property/ assigned-clock-parents;
+	/delete-property/ assigned-clock-rates;
+};
