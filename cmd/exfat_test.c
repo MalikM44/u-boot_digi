@@ -3,6 +3,9 @@
 #include <command.h>
 #include <fs.h>
 #include <malloc.h>
+#include <memalign.h>
+
+#define FS_TYPE_EXFAT 9
 
 static int do_exfatcat(struct cmd_tbl *cmdtp, int flag,
 		       int argc, char * const argv[])
@@ -20,28 +23,37 @@ static int do_exfatcat(struct cmd_tbl *cmdtp, int flag,
 	 * argv[3] = filename
 	 */
 
-	ret = fs_set_blk_dev(argv[1], argv[2], FS_TYPE_ANY);
+	ret = fs_set_blk_dev(argv[1], argv[2], FS_TYPE_EXFAT);
 	if (ret) {
 		printf("Failed to set block device\n");
 		return CMD_RET_FAILURE;
 	}
-
+	
 	/* get file size */
 	ret = fs_size(argv[3], &size);
 	if (ret || size <= 0) {
 		printf("Unable to get file size\n");
 		return CMD_RET_FAILURE;
 	}
-
-	buf = malloc(size + 1);
+	
+	printf("%s fs_size = %lld ++\n", __func__,size);
+	
+	buf = memalign(ARCH_DMA_MINALIGN, ALIGN(size + 1, ARCH_DMA_MINALIGN));
 	if (!buf) {
 		printf("Out of memory\n");
 		return CMD_RET_FAILURE;
 	}
+	memset(buf, 0, size + 1);
 
+	ret = fs_set_blk_dev(argv[1], argv[2], FS_TYPE_EXFAT);
+	if (ret) {
+		printf("Failed to set block device\n");
+		return CMD_RET_FAILURE;
+	}
+	
 	ret = fs_read(argv[3], (ulong)buf, 0, size, &actread);
 	if (ret || actread <= 0) {
-		printf("File read failed\n");
+		printf("File read failed, actread= %d, ret = %d\n", actread, ret);
 		free(buf);
 		return CMD_RET_FAILURE;
 	}

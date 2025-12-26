@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdbool.h>
+#include <memalign.h>
 #ifndef __UBOOT__
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -165,8 +166,8 @@ struct exfat_dev* exfat_open(const char* spec, enum exfat_mode mode);
 int exfat_close(struct exfat_dev* dev);
 int exfat_fsync(struct exfat_dev* dev);
 enum exfat_mode exfat_get_mode(const struct exfat_dev* dev);
-off_t exfat_get_size(const struct exfat_dev* dev);
-off_t exfat_seek(struct exfat_dev* dev, off_t offset, int whence);
+uint64_t exfat_get_size(const struct exfat_dev* dev);
+uint64_t exfat_seek(struct exfat_dev* dev, off_t offset, int whence);
 ssize_t exfat_read(struct exfat_dev* dev, void* buffer, size_t size);
 ssize_t exfat_write(struct exfat_dev* dev, const void* buffer, size_t size);
 ssize_t exfat_pread(struct exfat_dev* dev, void* buffer, size_t size,
@@ -259,5 +260,12 @@ bool exfat_fix_invalid_node_checksum(const struct exfat* ef,
 		struct exfat_node* node);
 bool exfat_fix_unknown_entry(struct exfat* ef, struct exfat_node* dir,
 		const struct exfat_entry* entry, off_t offset);
+		
+
+#define exfat_zalloc(sz) ({ \
+	void *p = memalign(ARCH_DMA_MINALIGN, ALIGN(sz, ARCH_DMA_MINALIGN)); \
+	if (p) memset(p, 0, sz); \
+	p; \
+})		
 
 #endif /* ifndef EXFAT_H_INCLUDED */

@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <inttypes.h>
+
+#include <memalign.h>
 #ifndef __UBOOT__
 #include <unistd.h>
 #include <sys/types.h>
@@ -130,6 +132,7 @@ static bool verify_vbr_checksum(const struct exfat* ef, void* sector)
 		vbr_checksum = exfat_vbr_add_checksum(sector, sector_size,
 				vbr_checksum);
 	}
+
 	if (exfat_pread(ef->dev, sector, sector_size, i * sector_size) < 0)
 	{
 		exfat_error("failed to read VBR checksum sector");
@@ -209,14 +212,14 @@ int exfat_mount(struct exfat* ef, const char* spec, const char* options)
 			ef->ro = 1;
 	}
 
-	ef->sb = malloc(sizeof(struct exfat_super_block));
+	ef->sb = exfat_zalloc(sizeof(struct exfat_super_block));
 	if (ef->sb == NULL)
 	{
 		exfat_error("failed to allocate memory for the super block");
 		exfat_free(ef);
 		return -ENOMEM;
 	}
-	memset(ef->sb, 0, sizeof(struct exfat_super_block));
+	//memset(ef->sb, 0, sizeof(struct exfat_super_block));
 
 	if (exfat_pread(ef->dev, ef->sb, sizeof(struct exfat_super_block), 0) < 0)
 	{
@@ -250,7 +253,9 @@ int exfat_mount(struct exfat* ef, const char* spec, const char* options)
 		exfat_free(ef);
 		return -EIO;
 	}
-	ef->zero_cluster = malloc(CLUSTER_SIZE(*ef->sb));
+	//ef->zero_cluster = malloc(CLUSTER_SIZE(*ef->sb));
+	size_t size = ALIGN(CLUSTER_SIZE(*ef->sb), ARCH_DMA_MINALIGN);
+	ef->zero_cluster = memalign(ARCH_DMA_MINALIGN, size);
 	if (ef->zero_cluster == NULL)
 	{
 		exfat_error("failed to allocate zero sector");
@@ -263,10 +268,11 @@ int exfat_mount(struct exfat* ef, const char* spec, const char* options)
 		exfat_free(ef);
 		return -EIO;
 	}
-	memset(ef->zero_cluster, 0, CLUSTER_SIZE(*ef->sb));
+	memset(ef->zero_cluster, 0, size);
+	
 	if (ef->sb->version.major != 1 || ef->sb->version.minor != 0)
 	{
-		exfat_error("unsupported exFAT version: %hhu.%hhu",
+		exfat_warn("unsupported exFAT version: %hhu.%hhu",
 				ef->sb->version.major, ef->sb->version.minor);
 		exfat_free(ef);
 		return -EIO;
@@ -290,7 +296,7 @@ int exfat_mount(struct exfat* ef, const char* spec, const char* options)
 	if ((off_t) le32_to_cpu(ef->sb->cluster_count) * CLUSTER_SIZE(*ef->sb) >
 			exfat_get_size(ef->dev))
 	{
-		exfat_error("file system in clusters is larger than device: "
+		exfat_warn("file system in clusters is larger than device: "
 				"%u * %d > %"PRIu64,
 				le32_to_cpu(ef->sb->cluster_count), CLUSTER_SIZE(*ef->sb),
 				exfat_get_size(ef->dev));
@@ -300,7 +306,8 @@ int exfat_mount(struct exfat* ef, const char* spec, const char* options)
 	if (le16_to_cpu(ef->sb->volume_state) & EXFAT_STATE_MOUNTED)
 		exfat_warn("volume was not unmounted cleanly");
 
-	ef->root = malloc(sizeof(struct exfat_node));
+	ef->root = memalign(ARCH_DMA_MINALIGN,
+		    ALIGN(sizeof(struct exfat_node), ARCH_DMA_MINALIGN));
 	if (ef->root == NULL)
 	{
 		exfat_error("failed to allocate root node");
@@ -323,7 +330,6 @@ int exfat_mount(struct exfat* ef, const char* spec, const char* options)
 	ef->root->atime = 0;
 	/* always keep at least 1 reference to the root node */
 	exfat_get_node(ef->root);
-
 	rc = exfat_cache_directory(ef, ef->root);
 	if (rc != 0)
 		goto error;
@@ -337,7 +343,7 @@ int exfat_mount(struct exfat* ef, const char* spec, const char* options)
 		exfat_error("clusters bitmap is not found");
 		goto error;
 	}
-
+	
 	return 0;
 
 error:

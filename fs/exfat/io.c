@@ -60,9 +60,9 @@ struct exfat_dev
 {
 	int fd;
 	enum exfat_mode mode;
-	off_t size; /* in bytes */
+	uint64_t size; /* in bytes */
 #ifdef USE_UBLIO
-	off_t pos;
+	uint64_t pos;
 	ublio_filehandle_t ufh;
 #endif
 #ifdef __UBOOT__
@@ -348,13 +348,14 @@ off_t exfat_get_size(const struct exfat_dev* dev)
 	return dev->size;
 }
 
-off_t exfat_seek(struct exfat_dev* dev, off_t offset, int whence)
+uint64_t exfat_seek(struct exfat_dev* dev, off_t offset, int whence)
 {
 #ifdef USE_UBLIO
 	/* XXX SEEK_CUR will be handled incorrectly */
 	return dev->pos = lseek(dev->fd, offset, whence);
 #else
 	return lseek(dev->fd, offset, whence);
+	
 #endif
 }
 
@@ -405,14 +406,15 @@ ssize_t exfat_pwrite(struct exfat_dev* dev, const void* buffer, size_t size,
 struct exfat_dev* exfat_open(const char* spec, enum exfat_mode mode)
 {
 	struct exfat_dev* dev;
-
-	dev = malloc(sizeof(struct exfat_dev));
+	
+	dev = exfat_zalloc(sizeof(struct exfat_dev));
 	if (!dev) {
 		exfat_error("failed to allocate memory for device structure");
 		return NULL;
 	}
 	dev->mode = EXFAT_MODE_RW;
-	dev->size = ctxt.cur_part_info.size * ctxt.cur_part_info.blksz;
+	dev->size = (uint64_t)ctxt.cur_part_info.size * (uint64_t)ctxt.cur_part_info.blksz;
+	
 	dev->ctxt = &ctxt;
 
 	return dev;
@@ -434,7 +436,7 @@ enum exfat_mode exfat_get_mode(const struct exfat_dev* dev)
 	return dev->mode;
 }
 
-off_t exfat_get_size(const struct exfat_dev* dev)
+uint64_t exfat_get_size(const struct exfat_dev* dev)
 {
 	return dev->size;
 }
@@ -450,7 +452,7 @@ ssize_t exfat_pread(struct exfat_dev* dev, void* buffer, size_t size,
 
 	sect = offset >> ctxt.cur_dev->log2blksz;
 	off = offset & (ctxt.cur_dev->blksz - 1);
-
+	
 	if (fs_devread(ctxt.cur_dev, &ctxt.cur_part_info, sect,
 		       off, size, buffer))
 		return 0;
@@ -617,7 +619,7 @@ int exfat_fs_probe(struct blk_desc *fs_dev_desc,
 	ret = exfat_mount(&ctxt.ef, NULL, "");
 	if (ret)
 		goto error;
-
+	
 	return 0;
 error:
 	ctxt.cur_dev = NULL;
@@ -914,6 +916,7 @@ int exfat_fs_read(const char *filename, void *buf, loff_t offset, loff_t len,
 
 	if (!len)
 		len = node->size;
+		
 
 	sz = exfat_generic_pread(&ctxt.ef, node, buf, len, offset);
 	if (sz < 0) {

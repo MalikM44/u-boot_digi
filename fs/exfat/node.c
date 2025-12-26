@@ -429,14 +429,7 @@ static int readdir(struct exfat* ef, struct exfat_node* parent,
 						upcase_size);
 				return -EIO;
 			}
-			upcase_comp = malloc(upcase_size);
-			if (upcase_comp == NULL)
-			{
-				exfat_error("failed to allocate upcase table (%"PRIu64" bytes)",
-						upcase_size);
-				return -ENOMEM;
-			}
-
+			upcase_comp = exfat_zalloc(upcase_size); 
 			/* read compressed upcase table */
 			if (exfat_pread(ef->dev, upcase_comp, upcase_size,
 					exfat_c2o(ef, le32_to_cpu(upcase->start_cluster))) < 0)
@@ -450,7 +443,7 @@ static int readdir(struct exfat* ef, struct exfat_node* parent,
 			}
 
 			/* decompress upcase table */
-			ef->upcase = calloc(EXFAT_UPCASE_CHARS, sizeof(uint16_t));
+			ef->upcase = exfat_zalloc(EXFAT_UPCASE_CHARS * sizeof(uint16_t));
 			if (ef->upcase == NULL)
 			{
 				free(upcase_comp);
@@ -482,7 +475,7 @@ static int readdir(struct exfat* ef, struct exfat_node* parent,
 			}
 			/* FIXME bitmap can be rather big, up to 512 MB */
 			ef->cmap.chunk_size = ef->cmap.size;
-			ef->cmap.chunk = malloc(BMAP_SIZE(ef->cmap.chunk_size));
+			ef->cmap.chunk = exfat_zalloc(BMAP_SIZE(ef->cmap.chunk_size));
 			if (ef->cmap.chunk == NULL)
 			{
 				exfat_error("failed to allocate clusters bitmap chunk "
@@ -535,7 +528,7 @@ int exfat_cache_directory(struct exfat* ef, struct exfat_node* dir)
 	int rc;
 	struct exfat_node* node;
 	struct exfat_node* current = NULL;
-
+	
 	if (dir->is_cached)
 		return 0; /* already cached */
 
@@ -564,7 +557,7 @@ int exfat_cache_directory(struct exfat* ef, struct exfat_node* dir)
 		dir->child = NULL;
 		return rc;
 	}
-
+	
 	dir->is_cached = true;
 	return 0;
 }

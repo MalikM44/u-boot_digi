@@ -447,7 +447,7 @@ int fs_set_blk_dev(const char *ifname, const char *dev_part_str, int fstype)
 {
 	struct fstype_info *info;
 	int part, i;
-
+	
 	part = part_get_info_by_dev_and_name_or_num(ifname, dev_part_str, &fs_dev_desc,
 						    &fs_partition, 1);
 	if (part < 0)
@@ -605,10 +605,16 @@ static int _fs_read(const char *filename, ulong addr, loff_t offset, loff_t len,
 	 * We don't actually know how many bytes are being read, since len==0
 	 * means read the whole file.
 	 */
+	 
 	buf = map_sysmem(addr, len);
+		
+	if (info->read == NULL) {
+		printf("ERROR: read callback is NULL for FS %s\n", info->name);
+		return -EINVAL;
+	}
+       
 	ret = info->read(filename, buf, offset, len, actread);
 	unmap_sysmem(buf);
-
 	/* If we requested a specific number of bytes, check we got it */
 	if (ret == 0 && len && *actread != len)
 		log_debug("** %s shorter than offset + len **\n", filename);
@@ -820,7 +826,6 @@ int do_load(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[],
 			(argc > 4) ? argv[4] : "", map_sysmem(addr, 0),
 			len_read);
 
-	printf("%llu bytes read in %lu ms", len_read, time);
 	if (time > 0) {
 		puts(" (");
 		print_size(div_u64(len_read, time) * 1000, "/s");
@@ -891,7 +896,6 @@ int do_save(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[],
 	if (ret < 0)
 		return 1;
 
-	printf("%llu bytes written in %lu ms", len, time);
 	if (time > 0) {
 		puts(" (");
 		print_size(div_u64(len, time) * 1000, "/s");
