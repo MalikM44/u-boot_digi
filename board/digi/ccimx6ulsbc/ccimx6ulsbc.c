@@ -473,6 +473,26 @@ void platform_default_environment(void)
 	}
 }
 
+int led_turn_on_blue(void)
+{
+
+	int led_gpio_blue;
+	
+	/*pad setting for GPIO3_IO06*/
+	imx_iomux_v3_setup_pad(MX6_PAD_LCD_DATA01__GPIO3_IO06 | MUX_PAD_CTRL(GPI_PAD_CTRL));
+	
+	led_gpio_blue = IMX_GPIO_NR(3, 6);
+	
+	/* Assert LED GPIO to high*/
+	gpio_request(led_gpio_blue, "LED GPIO");
+	
+	/*setting GPIO68 to high*/
+	gpio_direction_output(led_gpio_blue, 1);
+		
+	return 0;
+		
+}
+
 int board_late_init(void)
 {
 	/* SOM late init */
@@ -480,6 +500,8 @@ int board_late_init(void)
 
 	/* Set default dynamic variables */
 	platform_default_environment();
+	
+	led_turn_on_blue();
 
 	set_wdog_reset((struct wdog_regs *)WDOG1_BASE_ADDR);
 

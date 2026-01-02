@@ -65,7 +65,7 @@
 
 /* ENET2 */
 &fec2 {
-	status = "okay";
+	status = "disabled";
 };
 
 /* CAN1 (multiplexed with UART3 RTS/CTS) */
